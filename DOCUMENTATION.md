@@ -30,7 +30,7 @@ Le projet se compose de deux parties.
 - `index.html` : accueil, promotions, avantages, chiffres clés, produits phares.
 - `produits.html` : catalogue en 4 catégories (ordinateurs, périphériques, écrans, réseau).
 - `contact.html` : coordonnées et formulaire de contact.
-- `contact.php` : reçoit le formulaire de contact et enregistre le message.
+- `contact.php` : reçoit le formulaire de contact, vérifie la saisie, applique la limite d'envoi (1 message par minute, 5 par heure et par IP) et enregistre le message.
 
 **Le panel d'administration (privé)**, dans `admin/`, réservé à un administrateur connecté.
 - Connexion avec protection anti-brute-force (`admin/login.php`).
@@ -99,6 +99,7 @@ Les dossiers `app/`, `views/`, `storage/`, `storage/tmp/`, `scripts/`, `tests/` 
 
 Un `.htaccess` à la racine (tâche S1) s'applique à tout le site :
 - il désactive la liste automatique des fichiers d'un dossier (`Options -Indexes`) ;
+- il oblige le navigateur à revérifier les pages `.html` à chaque visite (`Cache-Control: no-cache`), pour qu'une page modifiée ne reste pas ancienne en cache ;
 - il interdit les fichiers cachés (`.gitignore`, `.htaccess`) ;
 - il interdit les fichiers de travail : `.md`, `.cmd`, `.bat`, `.ps1`, `.log`, `.bak`, `.ini`, `.json`, `.jsonl`, `.sql`, `.sqlite`.
 
@@ -140,6 +141,7 @@ Toutes les lectures et écritures JSON passent par `app/Support/FileStore.php`.
 | `storage/logs/AAAA-MM-JJ.jsonl` | JSONL | Journal des événements (date, IP, type, détail) | `app/Support/Logger.php` |
 | `storage/logs/mail-outbox.jsonl` | JSONL | Envois simulés (destinataire, sujet, date — jamais le contenu) | `app/Mail/Mailer.php` |
 | `storage/logs/mail-debug.log` | Texte | Trace SMTP, seulement si le débogage est activé (identifiants masqués) | `app/Mail/SmtpSender.php` |
+| `storage/logs/php-errors.log` | Texte | Erreurs PHP (jamais affichées dans le navigateur) | réglage dans `app/config.php` |
 | `storage/tmp/` | Fichiers | Fichiers temporaires des écritures atomiques | `app/Support/FileStore.php` |
 
 Fonctionnement de `FileStore` :
@@ -183,7 +185,7 @@ Fonctionnement de `FileStore` :
 - Purge de `storage/tmp` : aucun nom de fichier n'est reçu du navigateur, et `realpath()` vérifie chaque chemin (`app/Maintenance/TmpPurger.php`).
 
 ### Journal des événements — `app/Support/Logger.php`
-- Événements tracés : connexion réussie ou échouée, blocage d'IP, demande de code, changement de mot de passe ou d'e-mail, envois d'e-mails, purges.
+- Événements tracés : connexion réussie ou échouée, blocage d'IP, demande de code, changement de mot de passe ou d'e-mail, envois d'e-mails, purges, envoi de contact limité (raison et attente, jamais le contenu).
 - Les mots de passe et les codes ne sont jamais journalisés.
 
 ## 7. Front-end
@@ -228,7 +230,7 @@ Fonctionnement de `FileStore` :
 
 | Fichier | Contenu |
 |---|---|
-| `app/config.php` | Chemins (`STORAGE_PATH`, `LOGS_PATH`…), fuseau `Europe/Paris`, sessions (30 min), anti-brute-force, code de réinitialisation, longueur minimale du mot de passe, délai SMTP |
+| `app/config.php` | Chemins (`STORAGE_PATH`, `LOGS_PATH`…), fuseau `Europe/Paris`, erreurs PHP masquées et journalisées (S2), sessions (30 min), anti-brute-force, code de réinitialisation, longueur minimale du mot de passe, délai SMTP |
 | `storage/mail_config.json` | Paramètres SMTP saisis dans le module « Configuration des e-mails » (absent tant que rien n'est enregistré) |
 | `app/MailConfig/MailSettings.php` | Valeurs par défaut du SMTP : serveur du TP, port 465, SSL/TLS |
 | `.gitignore` | Exclut `storage/`, `mail_config.json`, les journaux de débogage et `vendor/` |
@@ -268,9 +270,9 @@ Chaque test sauvegarde les fichiers de `storage/` qu'il modifie et les restaure 
 
 ### Sécurité
 1. **Mot de passe SMTP en clair** dans `storage/mail_config.json`. C'est nécessaire pour l'envoyer au serveur, mais il n'est ni chiffré ni haché. Le fichier est seulement protégé par `.htaccess` et exclu de Git.
-2. **Formulaire de contact sans CSRF ni limite d'envoi** (`contact.php`). Il n'y a qu'un champ piège anti-robot : un robot peut remplir `storage/contact_messages.jsonl`.
+2. **Formulaire de contact sans jeton CSRF** (`contact.php`, tâche S6). *La limite d'envoi a été ajoutée par la tâche S3 : 1 message par minute et 5 par heure pour une même IP (`ContactStore::waitFor()`). Elle s'ajoute au champ piège anti-robot.* Limites restantes : plusieurs personnes derrière la même IP partagent le quota, et purger les messages remet les compteurs à zéro.
 3. **Aucun en-tête de sécurité HTTP** : pas de `Content-Security-Policy`, de `X-Frame-Options` ni de `X-Content-Type-Options`. Le `.htaccess` racine (S1) ne règle pas encore d'en-têtes : c'est la tâche S4.
-4. **Messages d'erreur PHP affichés** : `display_errors = On` dans la configuration PHP de WAMP. Une erreur peut révéler des chemins de fichiers.
+4. ~~Messages d'erreur PHP affichés (`display_errors = On` dans WAMP).~~ **Corrigé par la tâche S2** : `app/config.php` désactive l'affichage dans le navigateur et écrit les erreurs dans `storage/logs/php-errors.log`. Limite restante : une erreur de syntaxe dans `config.php` lui-même s'afficherait encore, car elle survient avant le réglage.
 5. **`session.use_strict_mode = 0`** dans la configuration PHP de WAMP, et cookie de session sans l'option `secure` (normal en HTTP local, à revoir en HTTPS).
 6. **La protection des dossiers dépend du `.htaccess`.** Si Apache ignorait ces fichiers (`AllowOverride None`), `storage/` serait lisible.
 7. `scripts/create_admin.php` affiche le mot de passe **en clair** pendant la saisie dans la console.
@@ -282,7 +284,7 @@ Chaque test sauvegarde les fichiers de `storage/` qu'il modifie et les restaure 
 
 ### Données personnelles (RGPD)
 11. Les journaux et les messages de contact contiennent des **adresses e-mail et des adresses IP**, sans durée de conservation définie.
-12. Le site ne contient **ni mentions légales, ni politique de confidentialité**, ni information sur l'usage des données du formulaire de contact.
+12. Le site ne contient **ni mentions légales, ni politique de confidentialité** (tâche R2). *L'information sur l'usage des données du formulaire de contact a été ajoutée par la tâche R1 : finalité, données collectées (y compris l'IP), absence de transmission, conservation de 12 mois, droits.*
 
 ### Qualité du code et fonctionnel
 13. **En-tête et pied de page dupliqués** dans `index.html`, `produits.html`, `contact.html` et `contact.php` : chaque modification est à faire 4 fois.

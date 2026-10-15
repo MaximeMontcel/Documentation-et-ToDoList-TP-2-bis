@@ -135,9 +135,9 @@ Une action est **terminée** seulement si **tout** ce qui suit est vrai :
 
 ### Jalon 1 — Corrections critiques (P0)
 - [x] S1 — Bloquer l'accès web aux fichiers sensibles de la racine *(terminé : `.htaccess` racine, listes de dossiers désactivées, contrôles ajoutés à `tests/check_panel.ps1`)*
-- [ ] S2 — Ne plus afficher les erreurs PHP
-- [ ] R1 — Informer sous le formulaire de contact
-- [ ] S3 — Limiter les envois du formulaire de contact
+- [x] S2 — Ne plus afficher les erreurs PHP *(terminé : réglage dans `app/config.php`, erreurs dans `storage/logs/php-errors.log`, ligne de contrôle dans Maintenance > Système, test dans `tests/check_panel.ps1`)*
+- [x] R1 — Informer sous le formulaire de contact *(terminé : paragraphe « Vos données personnelles » dans `contact.html`, test dans `tests/check_panel.ps1`)*
+- [x] S3 — Limiter les envois du formulaire de contact *(terminé : 1 message/minute et 5/heure par IP, calculés à partir des messages enregistrés — `ContactStore::waitFor()`, `contact.php`, événement « Envoi de contact limité », 7 tests dans `tests/check_logs.php`)*
 
 ### Jalon 2 — Fiabilité et sécurité (P1)
 - [ ] S4 — En-têtes de sécurité HTTP
