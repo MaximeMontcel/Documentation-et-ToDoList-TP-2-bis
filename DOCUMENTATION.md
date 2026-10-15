@@ -91,10 +91,18 @@ infoleader/
 ├── tests/                       Tests automatiques (inaccessibles depuis le web)
 ├── vendor/                      PHPMailer (inaccessible depuis le web)
 ├── verifier-panel.cmd           Lance tous les tests
+├── .htaccess                    Règles Apache pour tout le site (tâche S1)
 └── .gitignore                   Exclut storage/ et vendor/ de Git
 ```
 
 Les dossiers `app/`, `views/`, `storage/`, `storage/tmp/`, `scripts/`, `tests/` et `vendor/` contiennent chacun un `.htaccess` avec `Require all denied`.
+
+Un `.htaccess` à la racine (tâche S1) s'applique à tout le site :
+- il désactive la liste automatique des fichiers d'un dossier (`Options -Indexes`) ;
+- il interdit les fichiers cachés (`.gitignore`, `.htaccess`) ;
+- il interdit les fichiers de travail : `.md`, `.cmd`, `.bat`, `.ps1`, `.log`, `.bak`, `.ini`, `.json`, `.jsonl`, `.sql`, `.sqlite`.
+
+`DOCUMENTATION.md` et `TODO_LIST.md` sont conservés **en dehors** du dossier du site.
 
 ## 4. Points d'entrée et routage
 
@@ -261,7 +269,7 @@ Chaque test sauvegarde les fichiers de `storage/` qu'il modifie et les restaure 
 ### Sécurité
 1. **Mot de passe SMTP en clair** dans `storage/mail_config.json`. C'est nécessaire pour l'envoyer au serveur, mais il n'est ni chiffré ni haché. Le fichier est seulement protégé par `.htaccess` et exclu de Git.
 2. **Formulaire de contact sans CSRF ni limite d'envoi** (`contact.php`). Il n'y a qu'un champ piège anti-robot : un robot peut remplir `storage/contact_messages.jsonl`.
-3. **Aucun en-tête de sécurité HTTP** : pas de `Content-Security-Policy`, de `X-Frame-Options` ni de `X-Content-Type-Options`. Aucun `.htaccess` à la racine du site.
+3. **Aucun en-tête de sécurité HTTP** : pas de `Content-Security-Policy`, de `X-Frame-Options` ni de `X-Content-Type-Options`. Le `.htaccess` racine (S1) ne règle pas encore d'en-têtes : c'est la tâche S4.
 4. **Messages d'erreur PHP affichés** : `display_errors = On` dans la configuration PHP de WAMP. Une erreur peut révéler des chemins de fichiers.
 5. **`session.use_strict_mode = 0`** dans la configuration PHP de WAMP, et cookie de session sans l'option `secure` (normal en HTTP local, à revoir en HTTPS).
 6. **La protection des dossiers dépend du `.htaccess`.** Si Apache ignorait ces fichiers (`AllowOverride None`), `storage/` serait lisible.
@@ -290,4 +298,4 @@ Chaque test sauvegarde les fichiers de `storage/` qu'il modifie et les restaure 
 
 ### Environnement local
 21. L'envoi SMTP dépend du poste : un antivirus qui analyse les e-mails peut intercepter la connexion sécurisée et provoquer une erreur de certificat.
-22. Ce fichier et les autres fichiers `.md` placés à la racine sont **lisibles depuis le navigateur** (`http://localhost/infoleader/DOCUMENTATION.md`).
+22. ~~Les fichiers `.md`, `.cmd` et `.gitignore` de la racine étaient lisibles depuis le navigateur, et le contenu des dossiers s'affichait.~~ **Corrigé par la tâche S1** : `.htaccess` racine, réponse 403 vérifiée par `tests/check_panel.ps1`.

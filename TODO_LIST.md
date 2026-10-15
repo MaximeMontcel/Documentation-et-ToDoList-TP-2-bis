@@ -134,7 +134,7 @@ Une action est **terminée** seulement si **tout** ce qui suit est vrai :
 > Ne traitez qu'**une action à la fois**, et testez-la avant de passer à la suivante.
 
 ### Jalon 1 — Corrections critiques (P0)
-- [ ] S1 — Bloquer l'accès web aux fichiers sensibles de la racine
+- [x] S1 — Bloquer l'accès web aux fichiers sensibles de la racine *(terminé : `.htaccess` racine, listes de dossiers désactivées, contrôles ajoutés à `tests/check_panel.ps1`)*
 - [ ] S2 — Ne plus afficher les erreurs PHP
 - [ ] R1 — Informer sous le formulaire de contact
 - [ ] S3 — Limiter les envois du formulaire de contact
